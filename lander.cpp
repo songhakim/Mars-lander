@@ -15,7 +15,8 @@
 #include "lander.h"
 #include <cmath>
 
-void autopilot(void)
+void autopilot_land(void)
+// INSERT YOUR CODE
 // Autopilot to adjust the engine throttle, parachute and attitude control
 {
     double lander_mass = UNLOADED_LANDER_MASS + FUEL_CAPACITY * FUEL_DENSITY * fuel;
@@ -34,13 +35,34 @@ void autopilot(void)
 
     double kp = 2;
     double p_out = kp * error;
-    double delta = (GRAVITY * MARS_MASS / position.abs2()) / MAX_THRUST;
+    double delta = (GRAVITY * MARS_MASS * lander_mass / position.abs2()) / MAX_THRUST;
 
-    if (p_out <= - delta) throttle = 0.0;
+    if (p_out <= -delta) throttle = 0.0;
     else if (p_out >= 1 - delta) throttle = 1.0;
     else throttle = delta + p_out;
 }
 
+void autopilot_hover(void) {
+    //INSERT YOUR CODE
+    stabilized_attitude = true;
+    float kd = 0.25;
+    float kp = 0.01;
+
+    // autopilot for hovering at the given altitude
+    double lander_mass = UNLOADED_LANDER_MASS + FUEL_CAPACITY * FUEL_DENSITY * fuel;
+    double altitude = position.abs() - MARS_RADIUS;
+    double delta = (GRAVITY * MARS_MASS * lander_mass / position.abs2()) / MAX_THRUST;
+
+    //target altitude
+    double target_altitude = 600.0;
+    double speed = -velocity * position.norm(); // downward +
+    // PD controller
+    throttle = delta + kp * (target_altitude - altitude) + kd * speed;
+    if (throttle > 1.0) throttle = 1.0; else if (throttle < 0.0) throttle = 0.0;
+
+}
+
+//INSERT YOUR CODE
 vector3d drag(void) {
     double area_lander, area_chute;
     //drag
@@ -55,6 +77,7 @@ vector3d drag(void) {
 
 }
 
+//INSERT YOUR CODE
 void numerical_dynamics(void)
 // This is the function that performs the numerical integration to update the
 // lander's pose. The time step is delta_t (global variable).
@@ -81,7 +104,7 @@ void numerical_dynamics(void)
         new_position = 2 * position - previous_position + pow(delta_t, 2) * accel;
         velocity = (1 / delta_t) * (new_position - position);
     }
-    
+
 
     // update previous and current positions
     previous_position = position;
@@ -89,7 +112,7 @@ void numerical_dynamics(void)
 
 
     // Here we can apply an autopilot to adjust the thrust, parachute and attitude
-    if (autopilot_enabled) autopilot();
+    if (autopilot_enabled) autopilot_hover();
 
     // Here we can apply 3-axis stabilization to ensure the base is always pointing downwards
     if (stabilized_attitude) attitude_stabilization();
@@ -135,7 +158,7 @@ void initialize_simulation(void)
         position = vector3d(0.0, -(MARS_RADIUS + 10000.0), 0.0);
         velocity = vector3d(0.0, 0.0, 0.0);
         orientation = vector3d(0.0, 0.0, 90.0);
-        delta_t = 0.1;
+        delta_t = 0.01; // hovering: 0.01, landing 0.1
         parachute_status = NOT_DEPLOYED;
         stabilized_attitude = true;
         autopilot_enabled = true;
